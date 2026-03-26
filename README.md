@@ -1,4 +1,4 @@
-How to Run and Test the App
+How to Run and Test the App 
 
 To run Campus Connect on your computer, first install the project dependencies:
 
