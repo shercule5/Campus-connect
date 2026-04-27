@@ -1,26 +1,70 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { auth, db } from './firebaseConfig';
+
+type DemoUser = {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  major: string;
+};
+
+const DEMO_USERS_KEY = 'campusconnect_demo_users';
+
+const starterUsers: DemoUser[] = [
+  {
+    id: 'user_001',
+    name: 'Schyler Hercules',
+    email: 'schyler@nyit.edu',
+    password: 'password123',
+    major: 'Computer Science / Network Security',
+  },
+  {
+    id: 'user_002',
+    name: 'Maya Chen',
+    email: 'maya@nyit.edu',
+    password: 'password123',
+    major: 'Cybersecurity',
+  },
+];
+
+async function getDemoUsers() {
+  const savedUsers = await AsyncStorage.getItem(DEMO_USERS_KEY);
+
+  if (!savedUsers) {
+    await AsyncStorage.setItem(DEMO_USERS_KEY, JSON.stringify(starterUsers));
+    return starterUsers;
+  }
+
+  return JSON.parse(savedUsers) as DemoUser[];
+}
 
 export default function SignupScreen() {
+  const [name, setName] = useState('');
+  const [major, setMajor] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [password, setPassword] = useState('password123');
+  const [confirmPassword, setConfirmPassword] = useState('password123');
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (
+      !name.trim() ||
+      !major.trim() ||
+      !email.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim()
+    ) {
       Alert.alert('Missing info', 'Please fill in all fields.');
       return;
     }
@@ -38,23 +82,51 @@ export default function SignupScreen() {
     try {
       setLoading(true);
 
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email.trim(),
-        password
+      const users = await getDemoUsers();
+
+      const accountExists = users.some(
+        (user) => user.email.toLowerCase() === email.trim().toLowerCase()
       );
 
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        email: userCredential.user.email,
-        uid: userCredential.user.uid,
-        createdAt: serverTimestamp(),
-      });
+      if (accountExists) {
+        Alert.alert(
+          'Account already exists',
+          'Use the login screen for that email.'
+        );
+        return;
+      }
 
-      Alert.alert('Success', 'Account created successfully.');
-      router.replace('/(tabs)');
+      const newUser: DemoUser = {
+        id: `user_${Date.now()}`,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        major: major.trim(),
+      };
+
+      const updatedUsers = [...users, newUser];
+
+      await AsyncStorage.setItem(DEMO_USERS_KEY, JSON.stringify(updatedUsers));
+
+      setName('');
+      setMajor('');
+      setEmail('');
+      setPassword('password123');
+      setConfirmPassword('password123');
+
+      Alert.alert(
+        'Account Created',
+        'Your demo account was created. Now log in with that email and password.',
+        [
+          {
+            text: 'Go to Login',
+            onPress: () => router.replace('/login'),
+          },
+        ]
+      );
     } catch (error: any) {
-      console.log('Signup error:', error.message);
-      Alert.alert('Signup failed', error.message);
+      console.log('Demo signup error:', error);
+      Alert.alert('Signup failed', 'Something went wrong creating the account.');
     } finally {
       setLoading(false);
     }
@@ -69,11 +141,29 @@ export default function SignupScreen() {
         </Text>
 
         <View style={styles.card}>
+          <Text style={styles.label}>Full Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Example: Jordan Lee"
+            placeholderTextColor="#64748B"
+            value={name}
+            onChangeText={setName}
+          />
+
+          <Text style={styles.label}>Major</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Example: Computer Science"
+            placeholderTextColor="#64748B"
+            value={major}
+            onChangeText={setMajor}
+          />
+
           <Text style={styles.label}>Email</Text>
           <TextInput
-            placeholder="name@nyit.edu"
-            placeholderTextColor="#94A3B8"
             style={styles.input}
+            placeholder="student@nyit.edu"
+            placeholderTextColor="#64748B"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -82,22 +172,22 @@ export default function SignupScreen() {
 
           <Text style={styles.label}>Password</Text>
           <TextInput
-            placeholder="Create a password"
-            placeholderTextColor="#94A3B8"
-            secureTextEntry
             style={styles.input}
+            placeholder="At least 6 characters"
+            placeholderTextColor="#64748B"
             value={password}
             onChangeText={setPassword}
+            secureTextEntry
           />
 
           <Text style={styles.label}>Confirm Password</Text>
           <TextInput
-            placeholder="Confirm your password"
-            placeholderTextColor="#94A3B8"
-            secureTextEntry
             style={styles.input}
+            placeholder="Confirm password"
+            placeholderTextColor="#64748B"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
+            secureTextEntry
           />
 
           <TouchableOpacity
@@ -112,7 +202,8 @@ export default function SignupScreen() {
 
           <TouchableOpacity onPress={() => router.push('/login')}>
             <Text style={styles.linkSecondary}>
-              Already have an account? <Text style={styles.linkBold}>Log in</Text>
+              Already have an account?{' '}
+              <Text style={styles.linkBold}>Log in</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -154,7 +245,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 8,
     marginTop: 10,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   input: {
     backgroundColor: '#1F2937',
@@ -177,7 +268,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 16,
   },
   linkSecondary: {
@@ -186,6 +277,6 @@ const styles = StyleSheet.create({
   },
   linkBold: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });
