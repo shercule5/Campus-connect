@@ -6,6 +6,56 @@ Campus Connect is a student-focused mobile app designed to help college students
 
 Campus Connect allows students to interact through a community feed, filter posts by class and category, comment on discussions, reply to comments, and view professor ratings before registration.
 
+## Notable features to mention
+
+**1. Course-based community feed**
+Students can browse posts connected to specific classes and communities, instead of everything being dumped into one general feed.
+
+**2. Search and filtering system**
+The feed can be filtered by community, class, post type, and sorting. You can explain that this helps students quickly find course-specific questions, notes, study groups, or events.
+
+**3. Heart/like animation**
+When a user likes a post, the heart changes visually and animates, which makes the interaction feel more polished and similar to real social apps.
+
+**4. Comments and replies**
+Users can comment under posts, and other students can reply directly to comments. This shows deeper discussion instead of only one-level comments.
+
+**5. Realistic seeded activity**
+The app already looks active with sample student posts, comments, replies, likes, and course discussions. This helps demonstrate how the app would feel with actual users.
+
+**6. Create post flow**
+Students can create posts for different purposes like questions, notes, events, and study groups. That shows the app supports multiple student needs, not just random posting.
+
+**7. Professor ratings section**
+Students can view professor ratings by class, including overall rating, difficulty, workload, and “would take again” percentage.
+
+**8. Rating bubbles instead of typing numbers**
+For professor reviews, users pick ratings from bubbles instead of typing numbers manually. This is more mobile-friendly and reduces input mistakes.
+
+**9. Missing-field validation**
+If a user tries to submit a professor review without required information like semester or comment, the app alerts them. That shows form validation and error handling.
+
+**10. Course search with class names**
+Classes show as full labels like `CSCI 260 - Data Structures`, which is clearer than only showing course codes.
+
+**11. Community/class logic**
+The feed handles course filtering intelligently. For example, selecting “All Communities” plus one class should still show that class, because class filtering works independently from community filtering.
+
+**12. Login and account demo flow**
+The app supports a create-account and login flow for the prototype. You can also log in as a friend/demo user to show different user perspectives.
+
+**13. Tab navigation**
+The app has separate tabs for Feed, Create, Ratings, and Profile, which makes the structure easy to understand and realistic for a mobile app.
+
+**14. Firebase/database planning**
+Even if the live demo uses local prototype data, the repo includes Firebase/Firestore database documentation and sample data files showing how users, posts, comments, and professor reviews would be stored.
+
+**15. README and setup documentation**
+The project includes setup instructions, technology stack, testing strategy, user guide, database documentation, and contributor roles. That shows the repo is organized like a real software project.
+
+I tried to go beyond just making screens. I added real app behavior like form validation, interactive likes, comments with replies, filtering logic, professor rating calculations, and realistic sample activity so the prototype feels like something students could actually use.”
+
+
 ## Main Features
 
 - Student login/sign-in flow
