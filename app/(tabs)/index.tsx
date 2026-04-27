@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { router } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -17,6 +16,19 @@ import { Post, PostType, usePosts } from '../../context/PostsContext';
 import { courses } from '../../data/courses';
 
 type SortOption = 'Latest' | 'Most Liked';
+
+type FeedReply = {
+  id: number;
+  text: string;
+};
+
+type FeedComment = {
+  id: number;
+  text: string;
+  replies: FeedReply[];
+};
+
+type CommentThreadMap = Record<string, FeedComment[]>;
 
 function getCommunityFromCourse(course: string): string {
   if (course === 'Campus General') return 'Campus General';
@@ -66,18 +78,109 @@ const POST_TYPE_OPTIONS: Array<'All Types' | PostType> = [
 
 const SORT_OPTIONS: SortOption[] = ['Latest', 'Most Liked'];
 
+const seededStudentComments: FeedComment[] = [
+  {
+    id: 101,
+    text: 'I was wondering the same thing. This helped me understand it better.',
+    replies: [
+      {
+        id: 1001,
+        text: 'Same here, I was confused at first too.',
+      },
+    ],
+  },
+  {
+    id: 102,
+    text: 'This class has been moving fast, so I’m glad someone posted about it.',
+    replies: [
+      {
+        id: 1002,
+        text: 'Facts. The assignments stack up quick if you wait.',
+      },
+    ],
+  },
+  {
+    id: 103,
+    text: 'Does anyone know if this will be on the next quiz?',
+    replies: [
+      {
+        id: 1003,
+        text: 'Probably. The professor mentioned it twice last class.',
+      },
+      {
+        id: 1004,
+        text: 'I would definitely review it just in case.',
+      },
+    ],
+  },
+  {
+    id: 104,
+    text: 'I’m down to make a small study group for this.',
+    replies: [
+      {
+        id: 1005,
+        text: 'I’m interested. What time were you thinking?',
+      },
+    ],
+  },
+  {
+    id: 105,
+    text: 'The notes from last lecture helped a lot with this topic.',
+    replies: [
+      {
+        id: 1006,
+        text: 'Do you mind sharing them in the class community?',
+      },
+    ],
+  },
+  {
+    id: 106,
+    text: 'I had the same issue last week. Office hours helped a lot.',
+    replies: [
+      {
+        id: 1007,
+        text: 'Good to know. I might go this week.',
+      },
+    ],
+  },
+];
+
 function FeedPostCard({
   item,
   onLike,
-  onCommentPress,
   liked,
+  comments,
+  commentInput,
+  replyInputs,
+  openReplyBox,
+  onCommentInputChange,
+  onReplyInputChange,
+  onAddComment,
+  onToggleReplyBox,
+  onAddReply,
 }: {
   item: Post;
   onLike: () => void;
-  onCommentPress: () => void;
   liked: boolean;
+  comments: FeedComment[];
+  commentInput: string;
+  replyInputs: Record<number, string>;
+  openReplyBox: number | null;
+  onCommentInputChange: (text: string) => void;
+  onReplyInputChange: (commentId: number, text: string) => void;
+  onAddComment: () => void;
+  onToggleReplyBox: (commentId: number) => void;
+  onAddReply: (commentId: number) => void;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [showComments, setShowComments] = useState(false);
+
+  const totalReplies = comments.reduce(
+    (total, comment) => total + comment.replies.length,
+    0
+  );
+
+  const totalDiscussionCount = comments.length + totalReplies;
 
   const handleLikePress = () => {
     Animated.sequence([
@@ -138,9 +241,12 @@ function FeedPostCard({
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onCommentPress}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => setShowComments((current) => !current)}
+        >
           <Ionicons name="chatbubble-outline" size={18} color="#CBD5E1" />
-          <Text style={styles.actionText}>{item.comments}</Text>
+          <Text style={styles.actionText}>{totalDiscussionCount}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
@@ -148,6 +254,71 @@ function FeedPostCard({
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
       </View>
+
+      {showComments && (
+        <View style={styles.commentSection}>
+          <Text style={styles.commentSectionTitle}>
+            Discussion ({totalDiscussionCount})
+          </Text>
+
+          <View style={styles.addCommentBox}>
+            <TextInput
+              value={commentInput}
+              onChangeText={onCommentInputChange}
+              placeholder="Add a comment..."
+              placeholderTextColor="#64748B"
+              style={styles.commentInput}
+              multiline
+            />
+
+            <TouchableOpacity style={styles.commentButton} onPress={onAddComment}>
+              <Text style={styles.commentButtonText}>Post Comment</Text>
+            </TouchableOpacity>
+          </View>
+
+          {comments.length === 0 ? (
+            <Text style={styles.noCommentsText}>
+              No comments yet. Start the conversation.
+            </Text>
+          ) : (
+            comments.map((comment) => (
+              <View key={comment.id} style={styles.commentCard}>
+                <Text style={styles.commentText}>{comment.text}</Text>
+
+                <TouchableOpacity onPress={() => onToggleReplyBox(comment.id)}>
+                  <Text style={styles.replyButtonText}>Reply</Text>
+                </TouchableOpacity>
+
+                {comment.replies.map((reply) => (
+                  <View key={reply.id} style={styles.replyCard}>
+                    <Text style={styles.replyText}>{reply.text}</Text>
+                  </View>
+                ))}
+
+                {openReplyBox === comment.id && (
+                  <View style={styles.replyInputWrap}>
+                    <TextInput
+                      value={replyInputs[comment.id] || ''}
+                      onChangeText={(text) => onReplyInputChange(comment.id, text)}
+                      placeholder="Reply to this comment..."
+                      placeholderTextColor="#64748B"
+                      style={styles.replyInput}
+                      multiline
+                    />
+
+                    <TouchableOpacity
+                      style={styles.replyPostButton}
+                      onPress={() => onAddReply(comment.id)}
+                    >
+                      <Text style={styles.replyPostButtonText}>Post Reply</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -162,6 +333,40 @@ export default function FeedScreen() {
     useState<'All Types' | PostType>('All Types');
   const [selectedSort, setSelectedSort] = useState<SortOption>('Latest');
   const [showFilters, setShowFilters] = useState(false);
+
+  const [commentThreads, setCommentThreads] = useState<CommentThreadMap>(() => {
+    const seededThreads: CommentThreadMap = {};
+
+    posts.forEach((post, postIndex) => {
+      const oldDisplayedCommentCount =
+        typeof post.comments === 'number' && post.comments > 0
+          ? post.comments
+          : postIndex % 3 === 0
+            ? 2
+            : postIndex % 3 === 1
+              ? 1
+              : 0;
+
+      if (oldDisplayedCommentCount > 0) {
+        seededThreads[post.id] = seededStudentComments
+          .slice(0, oldDisplayedCommentCount)
+          .map((comment, commentIndex) => ({
+            ...comment,
+            id: 10000 + postIndex * 100 + commentIndex,
+            replies: comment.replies.map((reply, replyIndex) => ({
+              ...reply,
+              id: 20000 + postIndex * 1000 + commentIndex * 10 + replyIndex,
+            })),
+          }));
+      }
+    });
+
+    return seededThreads;
+  });
+
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [replyInputs, setReplyInputs] = useState<Record<number, string>>({});
+  const [openReplyBoxes, setOpenReplyBoxes] = useState<Record<string, number | null>>({});
 
   const classOptions = useMemo(() => {
     const filteredCourses =
@@ -213,7 +418,14 @@ export default function FeedScreen() {
     }
 
     return result;
-  }, [posts, searchText, selectedCommunity, selectedCourse, selectedPostType, selectedSort]);
+  }, [
+    posts,
+    searchText,
+    selectedCommunity,
+    selectedCourse,
+    selectedPostType,
+    selectedSort,
+  ]);
 
   const clearFilters = () => {
     setSelectedCommunity('All Communities');
@@ -228,6 +440,72 @@ export default function FeedScreen() {
     (selectedCourse !== 'All Classes' ? 1 : 0) +
     (selectedPostType !== 'All Types' ? 1 : 0) +
     (selectedSort !== 'Latest' ? 1 : 0);
+
+  const handleAddComment = (postId: string) => {
+    const text = commentInputs[postId]?.trim();
+
+    if (!text) {
+      return;
+    }
+
+    const newComment: FeedComment = {
+      id: Date.now(),
+      text,
+      replies: [],
+    };
+
+    setCommentThreads((currentThreads) => ({
+      ...currentThreads,
+      [postId]: [newComment, ...(currentThreads[postId] || [])],
+    }));
+
+    setCommentInputs((currentInputs) => ({
+      ...currentInputs,
+      [postId]: '',
+    }));
+  };
+
+  const handleToggleReplyBox = (postId: string, commentId: number) => {
+    setOpenReplyBoxes((currentBoxes) => ({
+      ...currentBoxes,
+      [postId]: currentBoxes[postId] === commentId ? null : commentId,
+    }));
+  };
+
+  const handleAddReply = (postId: string, commentId: number) => {
+    const text = replyInputs[commentId]?.trim();
+
+    if (!text) {
+      return;
+    }
+
+    const newReply: FeedReply = {
+      id: Date.now(),
+      text,
+    };
+
+    setCommentThreads((currentThreads) => ({
+      ...currentThreads,
+      [postId]: (currentThreads[postId] || []).map((comment) =>
+        comment.id === commentId
+          ? {
+              ...comment,
+              replies: [...comment.replies, newReply],
+            }
+          : comment
+      ),
+    }));
+
+    setReplyInputs((currentInputs) => ({
+      ...currentInputs,
+      [commentId]: '',
+    }));
+
+    setOpenReplyBoxes((currentBoxes) => ({
+      ...currentBoxes,
+      [postId]: null,
+    }));
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -412,12 +690,27 @@ export default function FeedScreen() {
             item={item}
             liked={isPostLiked(item.id)}
             onLike={() => likePost(item.id)}
-            onCommentPress={() =>
-              router.push({
-                pathname: '/post-details',
-                params: { postId: item.id },
-              })
+            comments={commentThreads[item.id] || []}
+            commentInput={commentInputs[item.id] || ''}
+            replyInputs={replyInputs}
+            openReplyBox={openReplyBoxes[item.id] || null}
+            onCommentInputChange={(text) =>
+              setCommentInputs((currentInputs) => ({
+                ...currentInputs,
+                [item.id]: text,
+              }))
             }
+            onReplyInputChange={(commentId, text) =>
+              setReplyInputs((currentInputs) => ({
+                ...currentInputs,
+                [commentId]: text,
+              }))
+            }
+            onAddComment={() => handleAddComment(item.id)}
+            onToggleReplyBox={(commentId) =>
+              handleToggleReplyBox(item.id, commentId)
+            }
+            onAddReply={(commentId) => handleAddReply(item.id, commentId)}
           />
         )}
         ListEmptyComponent={
@@ -700,6 +993,104 @@ const styles = StyleSheet.create({
   },
   likedText: {
     color: '#FCA5A5',
+  },
+  commentSection: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+  },
+  commentSectionTitle: {
+    color: '#F8FAFC',
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  addCommentBox: {
+    marginBottom: 14,
+  },
+  commentInput: {
+    backgroundColor: '#1E293B',
+    color: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    fontSize: 14,
+    minHeight: 46,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 8,
+  },
+  commentButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  commentButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  noCommentsText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  commentCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  commentText: {
+    color: '#F8FAFC',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  replyButtonText: {
+    color: '#60A5FA',
+    fontWeight: '800',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  replyCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
+    marginLeft: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#3B82F6',
+  },
+  replyText: {
+    color: '#CBD5E1',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  replyInputWrap: {
+    marginTop: 10,
+  },
+  replyInput: {
+    backgroundColor: '#0F172A',
+    color: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    fontSize: 14,
+    minHeight: 42,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 8,
+  },
+  replyPostButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 10,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  replyPostButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
   emptyState: {
     marginTop: 80,
